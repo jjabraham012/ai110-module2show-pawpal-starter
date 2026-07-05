@@ -10,7 +10,7 @@
 
 - What classes did you include, and what responsibilities did you assign to each?
 
-    Pet holds basic animal info like name, species, breed, and age, and is responsible for editing its own profile. Task represents a single care activity and tracks its category, priority, duration, and completion status. Schedule represents one day's calendar, knows how many minutes are available, and handles generating a daily plan that fits tasks within that time. Owner ties everything together as the user — it manages the list of pets, stores preferences, and serves as the entry point for viewing the daily plan.
+    The Pet class holds the basic animal info like names, species, breeds, ages, and is responsible for editing the profile. The Task class represents a single care activity and tracks its category, priority, duration, and completion status. The Schedule class represents the whole calendar system, basically knows how many minutes are available, and handles generating a daily plan that fits tasks within that time. Finally, the Owner class acts as the user and manages the list of pets, stores preferences, and serves as the entry point for seeing the daily plan.
 
 **b. Design changes**
 
