@@ -4,13 +4,7 @@ from pawpal_system import Owner, Pet, Task, Scheduler
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
-
-st.markdown(
-    """
-Welcome to **PawPal+**, your pet care planning assistant.
-Add your pets, create care tasks, and generate a daily schedule based on priority and available time.
-"""
-)
+st.markdown("Your pet care planning assistant. Add pets, create tasks, and generate a smart daily schedule.")
 
 if "owner" not in st.session_state:
     st.session_state.owner = Owner("Jordan")
@@ -18,7 +12,6 @@ if "owner" not in st.session_state:
 owner = st.session_state.owner
 
 st.divider()
-
 st.subheader("Owner & Pets")
 
 owner.name = st.text_input("Owner name", value=owner.name)
@@ -48,7 +41,6 @@ else:
     st.info("No pets yet. Add one above.")
 
 st.divider()
-
 st.subheader("Tasks")
 st.caption("Add care tasks for your pets. These feed into the scheduler.")
 
@@ -65,6 +57,7 @@ if owner.pets:
         with col3:
             priority = st.selectbox("Priority", ["high", "medium", "low"])
             duration = st.number_input("Duration (minutes)", min_value=5, max_value=240, value=30)
+        frequency = st.selectbox("Frequency", ["daily", "weekly", "monthly", "as needed"])
         add_task = st.form_submit_button("Add Task")
 
     if add_task and task_title and task_time:
@@ -75,6 +68,7 @@ if owner.pets:
             time=task_time,
             priority=priority,
             duration_minutes=int(duration),
+            frequency=frequency,
         ))
         st.success(f"Added '{task_title}' for {selected_pet_name}!")
 
@@ -91,6 +85,7 @@ if owner.pets:
                     "Category": task.category,
                     "Priority": task.priority,
                     "Minutes": task.duration_minutes,
+                    "Frequency": task.frequency,
                 })
         st.table(task_data)
     else:
@@ -99,10 +94,11 @@ else:
     st.info("Add a pet first before creating tasks.")
 
 st.divider()
-
 st.subheader("📋 Build Schedule")
 
 available = st.slider("Available minutes today", min_value=30, max_value=300, value=120)
+
+filter_pet = st.selectbox("Filter by pet", ["All"] + [p.name for p in owner.pets]) if owner.pets else "All"
 
 if st.button("Generate schedule"):
     all_tasks = owner.get_all_tasks()
@@ -111,31 +107,44 @@ if st.button("Generate schedule"):
     else:
         scheduler = Scheduler(owner, available_minutes=available)
         scheduler.generate_daily_plan()
+        scheduler.sort_by_time()
         st.session_state.daily_plan = scheduler.daily_plan
         st.session_state.scheduler = scheduler
 
+        conflicts = scheduler.detect_conflicts()
+        if conflicts:
+            for warning in conflicts:
+                st.warning(warning)
+
 if "daily_plan" in st.session_state and st.session_state.daily_plan:
-    st.write("**Today's Plan:**")
-    for i, task in enumerate(st.session_state.daily_plan):
-        pet_name = ""
-        for pet in owner.pets:
-            if task in pet.tasks:
-                pet_name = pet.name
-                break
+    scheduler = st.session_state.scheduler
+
+    if filter_pet != "All":
+        display_tasks = scheduler.filter_by_pet(filter_pet)
+    else:
+        display_tasks = st.session_state.daily_plan
+
+    st.write("**Today's Plan** (sorted by time, high priority first):")
+    for i, task in enumerate(display_tasks):
+        pet = owner.find_pet_for_task(task)
+        pet_label = pet.name if pet else "?"
 
         status = "✅" if task.completed else "⬜"
         col1, col2 = st.columns([5, 1])
         with col1:
-            st.write(f"{status} **{i+1}. {task.time}** — {task.description} ({pet_name}, {task.category}, {task.priority}, {task.duration_minutes} min)")
+            st.write(f"{status} **{i+1}. {task.time}** — {task.description} ({pet_label}, {task.category}, {task.priority}, {task.duration_minutes} min)")
         with col2:
             if not task.completed:
                 if st.button("Done", key=f"done_{i}"):
-                    task.mark_complete()
+                    next_task = scheduler.mark_task_complete(task)
+                    if next_task:
+                        st.toast(f"Recurring: '{task.description}' rescheduled for {next_task.due_date}")
                     st.rerun()
 
-    scheduler = st.session_state.scheduler
     used = available - scheduler.get_time_remaining()
     remaining = scheduler.get_time_remaining()
     st.caption(f"Total: {used} min used, {remaining} min remaining")
 
-    st.markdown("**Why this plan?** The scheduler sorts all tasks by priority (high → medium → low) and fills the day until your available time runs out. High-priority tasks are always scheduled first.")
+    st.markdown("**Why this plan?** The scheduler sorts all tasks by priority (high → medium → low), fits them within your available time, then sorts by time for a chronological view. Conflicts at the same time slot are flagged as warnings above.")
+elif "daily_plan" in st.session_state:
+    st.info("No tasks to schedule. Add some tasks first.")
