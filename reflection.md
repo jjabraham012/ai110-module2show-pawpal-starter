@@ -5,7 +5,12 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+
+    My UML diagram included four classes connected by different types of relationships, not just inheritance. The goal was to separate the data classes like pets and tasks to more logicy classes like scheduling to keep the whole app organized.
+
 - What classes did you include, and what responsibilities did you assign to each?
+
+    Pet holds basic animal info like name, species, breed, and age, and is responsible for editing its own profile. Task represents a single care activity and tracks its category, priority, duration, and completion status. Schedule represents one day's calendar, knows how many minutes are available, and handles generating a daily plan that fits tasks within that time. Owner ties everything together as the user — it manages the list of pets, stores preferences, and serves as the entry point for viewing the daily plan.
 
 **b. Design changes**
 
